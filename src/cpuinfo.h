@@ -11,10 +11,13 @@
 ----------------------------------------------------------------------------*/
 extern int proccnt       (void); /* # logical processors */
 
-#ifdef __linux__                 /* if Linux system */
-extern int corecnt       (void); /* # processor cores, parses /proc/cpuinfo */
+#ifndef _WIN32                   /* if Linux or Apple Mac OS system */
+extern int corecnt       (void); /* # processor cores */
+
+#ifdef __linux__
 #ifdef HAVE_HWLOC
-extern int corecntHwloc (void);  /* # processor cores, uses hwloc */
+extern int corecntHwloc (void);  /* # processor cores */
+#endif
 #endif
 #endif
 

@@ -4,17 +4,22 @@
   Author  : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------------*/
 #ifdef _WIN32                       /* if Microsoft Windows system */
-#include <windows.h>
+#  include <windows.h>
 #else
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#ifdef HAVE_HWLOC
-#include <hwloc.h>                  /* needed for corecntHwloc() */
+#  include <unistd.h>
+#  include <stdio.h>
+#  include <stdlib.h>
+#  ifdef __APPLE__                  /* if Mac OS */
+#    include <sys/sysctl.h>
+#    include <sys/types.h>
+#  endif
+#  ifdef __linux__                  /* if Linux */
+#    ifdef HAVE_HWLOC
+#      include <hwloc.h>            /* needed for corecntHwloc() */
                                     /* link with -lhwloc */
                                     /* on ubuntu: install libhwloc-dev */
-#endif
+#    endif
+#  endif
 #endif  /* #ifdef _WIN32 .. #else .. */
 #include "cpuinfo.h"
 
@@ -46,7 +51,7 @@ References (cpuid):
   msdn.microsoft.com/en-us/library/vstudio/hskdteyh%28v=vs.100%29.aspx
 ----------------------------------------------------------------------------*/
 
-#ifndef _WIN32                      /* if Linux/Unix system */
+#ifdef __linux__                    /* if Linux system */
 #ifdef HAVE_HWLOC                   /* if hwloc is available and enabled */
 int corecntHwloc (void)
 {                                   /* --- number of processor cores */
@@ -62,7 +67,7 @@ int corecntHwloc (void)
   return cnt;                       /* return the number of cores */
 }  /* corecntHwloc() */
 #endif  /* #ifdef HAVE_HWLOC */
-#endif  /* #ifdef _WIN32 */
+#endif  /* #ifdef __linux__ */
 /*----------------------------------------------------------------------------
 Additional info and references (corecntHwloc):
   This function depends on the Portable Hardware Locality (hwloc)
@@ -88,11 +93,11 @@ int corecnt (void)
   if (nprocs == -1) return -1;      /* abort if nprocs can't be determined */
   int *phys2;
   int *core2;
-  
+
   phys = calloc(2*(size_t)nprocs, sizeof(int));
   core = phys + nprocs;
   if (!phys) return -1;
-  
+
   /* collect physical id and core id of each logical processor */
   fp = fopen("/proc/cpuinfo", "r");
   if (!fp) { free(phys); return -1; }
@@ -108,9 +113,7 @@ int corecnt (void)
   }
   fclose(fp);
   if (n != nprocs) { free(phys); return -1; }
-  /* @CB: Hier wird die Annahme gemacht, dass in /proc/cpuinfo die
-   * physical id immer vor der core id kommt. Sollte man evtl. vermeiden... */
-  
+
   /* figure out how many unique physical ids exist */
   phys2 = calloc((size_t)max_phys+1, sizeof(int));
   if (!phys2) { free(phys); return -1; }
@@ -126,7 +129,7 @@ int corecnt (void)
   #ifndef NDEBUG
   printf("Number of physical processors: %d\n", nphys);
   #endif
-  
+
   /* figure out how many unique core ids exist */
   core2 = calloc((size_t)max_core+1, sizeof(int));
   if (!core2) { free(phys); free(phys2); return -1; }
@@ -154,31 +157,47 @@ int corecnt (void)
   }
   if ((ncores != nprocs) && (ncores != nprocs/2)) {
     free(phys); free(phys2); free(core2); return -1; }
-  
+
   free(phys);
   free(phys2);
   free(core2);
   return ncores;
 }  /* corecnt() */
-#endif  /* #ifndef _WIN32 */
+#elif defined __APPLE__             /* if Apple Mac OS system */
+int corecnt (void)
+{                                   /* --- number of processor cores */
+  int ncores;
+  size_t len = sizeof(ncores);
+  sysctlbyname("hw.physicalcpu", &ncores, &len, NULL, (size_t)0);
+  return ncores;
+}  /* corecnt() */
+#endif  /* #ifdef __linux__ .. elif defined __APPLE__ ..*/
 
 /*--------------------------------------------------------------------------*/
 
-#ifdef _WIN32                       /* if Microsoft Windows system */
-int proccnt (void)
-{                                   /* --- number of logical processors */
-  SYSTEM_INFO sysinfo;              /* system information structure */
-  GetSystemInfo(&sysinfo);          /* get system information */
-  return sysinfo.dwNumberOfProcessors;
-}  /* proccnt() */
-#else                               /* if Linux/Unix system */
+#ifdef __linux__                    /* if Linux system */
 #ifdef _SC_NPROCESSORS_ONLN         /* if glibc's sysconf is available */
 int proccnt (void)
 {                                   /* --- number of logical processors */
   return (int)sysconf(_SC_NPROCESSORS_ONLN);
 }  /* proccnt() */
 #endif  /* #ifdef _SC_NPROCESSORS_ONLN */
-#endif  /* #ifdef _WIN32 .. #else .. */
+#elif defined _WIN32                /* if Microsoft Windows system */
+int proccnt (void)
+{                                   /* --- number of logical processors */
+  SYSTEM_INFO sysinfo;              /* system information structure */
+  GetSystemInfo(&sysinfo);          /* get system information */
+  return sysinfo.dwNumberOfProcessors;
+}  /* proccnt() */
+#elif defined __APPLE__             /* if Apple Mac OS system */
+int proccnt (void)
+{                                   /* --- number of logical processors */
+  int nproc;
+  size_t len = sizeof(nproc);
+  sysctlbyname("hw.logicalcpu", &nproc, &len, NULL, (size_t)0);
+  return nproc;
+}  /* proccnt() */
+#endif  /* #ifdef __linux__ .. #elif def. WIN32 .. #elif def. __APPLE__ .. */
 /*----------------------------------------------------------------------------
 References (proccnt, Windows version):
   Info on SYSTEM_INFO structure:
@@ -305,7 +324,7 @@ int main (int argc, char* argv[])
   char vendor[12];
   getVendorID(vendor);
   printf("Vendor             %s\n", vendor);
-  #ifdef __linux__
+  #ifndef _WIN32
   printf("Processor cores    %d\n", corecnt());
   #endif
   printf("Logical processors %d\n", proccnt());
@@ -325,6 +344,6 @@ int main (int argc, char* argv[])
    See the glossary at:
      software.intel.com/en-us/articles/
        intel-64-architecture-processor-topology-enumeration */
-  
+
 }  /* main() */
 #endif

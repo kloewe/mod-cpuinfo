@@ -12,14 +12,11 @@
 #  ifdef __APPLE__                  /* if Mac OS */
 #    include <sys/sysctl.h>
 #    include <sys/types.h>
-#  endif
-#  ifdef __linux__                  /* if Linux */
+#  elif defined __linux__           /* if Linux */
 #    ifdef HAVE_HWLOC
 #      include <hwloc.h>            /* needed for corecntHwloc() */
-                                    /* link with -lhwloc */
-                                    /* on ubuntu: install libhwloc-dev */
 #    endif
-#  endif
+#  endif  /* #ifdef __APPLE__ .. #elif defined __linux__ */
 #endif  /* #ifdef _WIN32 .. #else .. */
 #include "cpuinfo.h"
 
@@ -34,6 +31,7 @@ static int cpuinfo[5];              /* cpu information */
 #ifdef _WIN32                       /* if Microsoft Windows system */
 #define cpuid   __cpuid             /* map existing function */
 #else                               /* if Linux/Unix system */
+
 static void cpuid (int info[4], int type)
 {                                   /* --- get CPU information */
   __asm__ __volatile__ ("cpuid" :
@@ -43,6 +41,7 @@ static void cpuid (int info[4], int type)
                         "=d" (info[3])
                         : "a" (type), "c" (0)); // : "a" (type));
 }  /* cpuid() */
+
 #endif  /* #ifdef _WIN32 .. #else .. */
 /*----------------------------------------------------------------------------
 References (cpuid):
@@ -50,24 +49,23 @@ References (cpuid):
   stackoverflow.com/a/7495023
   msdn.microsoft.com/en-us/library/vstudio/hskdteyh%28v=vs.100%29.aspx
 ----------------------------------------------------------------------------*/
+#if defined __linux__ && defined HAVE_HWLOC
 
-#ifdef __linux__                    /* if Linux system */
-#ifdef HAVE_HWLOC                   /* if hwloc is available and enabled */
 int corecntHwloc (void)
 {                                   /* --- number of processor cores */
   int cnt = -1;
   hwloc_topology_t topology;        /* init and load topology */
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
-  int depth = hwloc_get_type_depth( /* try to get the number of cores */
-          topology, HWLOC_OBJ_CORE);/* from topology */
+  int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_CORE);
+                                    /* try to get the number of cores */
   if (depth != HWLOC_TYPE_DEPTH_UNKNOWN)
     cnt = (int)hwloc_get_nbobjs_by_depth(topology, (unsigned)depth);
   hwloc_topology_destroy(topology); /* destroy topology object */
   return cnt;                       /* return the number of cores */
 }  /* corecntHwloc() */
-#endif  /* #ifdef HAVE_HWLOC */
-#endif  /* #ifdef __linux__ */
+
+#endif  /* #if defined __linux__ && defined HAVE_HWLOC */
 /*----------------------------------------------------------------------------
 Additional info and references (corecntHwloc):
   This function depends on the Portable Hardware Locality (hwloc)
@@ -75,8 +73,8 @@ Additional info and references (corecntHwloc):
   stackoverflow.com/a/12486105
   open-mpi.org/projects/hwloc
 ----------------------------------------------------------------------------*/
-
 #ifdef __linux__                    /* if Linux system */
+
 int corecnt (void)
 {                                   /* --- number of processor cores */
   FILE *fp;                         /* file pointer */
@@ -163,7 +161,9 @@ int corecnt (void)
   free(core2);
   return ncores;
 }  /* corecnt() */
+
 #elif defined __APPLE__             /* if Apple Mac OS system */
+
 int corecnt (void)
 {                                   /* --- number of processor cores */
   int ncores;
@@ -171,25 +171,29 @@ int corecnt (void)
   sysctlbyname("hw.physicalcpu", &ncores, &len, NULL, (size_t)0);
   return ncores;
 }  /* corecnt() */
+
 #endif  /* #ifdef __linux__ .. elif defined __APPLE__ ..*/
-
 /*--------------------------------------------------------------------------*/
-
 #ifdef __linux__                    /* if Linux system */
 #ifdef _SC_NPROCESSORS_ONLN         /* if glibc's sysconf is available */
+
 int proccnt (void)
 {                                   /* --- number of logical processors */
   return (int)sysconf(_SC_NPROCESSORS_ONLN);
 }  /* proccnt() */
+
 #endif  /* #ifdef _SC_NPROCESSORS_ONLN */
 #elif defined _WIN32                /* if Microsoft Windows system */
+
 int proccnt (void)
 {                                   /* --- number of logical processors */
   SYSTEM_INFO sysinfo;              /* system information structure */
   GetSystemInfo(&sysinfo);          /* get system information */
   return sysinfo.dwNumberOfProcessors;
 }  /* proccnt() */
+
 #elif defined __APPLE__             /* if Apple Mac OS system */
+
 int proccnt (void)
 {                                   /* --- number of logical processors */
   int nproc;
@@ -197,6 +201,7 @@ int proccnt (void)
   sysctlbyname("hw.logicalcpu", &nproc, &len, NULL, (size_t)0);
   return nproc;
 }  /* proccnt() */
+
 #endif  /* #ifdef __linux__ .. #elif def. WIN32 .. #elif def. __APPLE__ .. */
 /*----------------------------------------------------------------------------
 References (proccnt, Windows version):
@@ -219,6 +224,7 @@ int proccntmax (void)
   if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
   return (cpuinfo[1] >> 16) & 0xff; /* EBX[23:16] */
 }  /* proccntmax() */
+
 /*----------------------------------------------------------------------------
 References (proccntmax):
   "CPUID.1:EBX[23:16] represents the maximum number of addressable IDs
@@ -303,7 +309,7 @@ int hasAVX (void)
 
 /*--------------------------------------------------------------------------*/
 
-void getVendorID(char *buf)
+void getVendorID (char *buf)
 {                                   /* --- get vendor id */
   /* the string is going to be exactly 12 characters long, allocate
      the buffer outside this function accordingly */
@@ -313,12 +319,13 @@ void getVendorID(char *buf)
   ((unsigned *)buf)[1] = (unsigned)regs[3]; // EDX
   ((unsigned *)buf)[2] = (unsigned)regs[2]; // ECX
 }
+
 /*----------------------------------------------------------------------------
 References (getVendorID):
   stackoverflow.com/a/3082553
 ----------------------------------------------------------------------------*/
-
 #ifdef CPUINFO_MAIN
+
 int main (int argc, char* argv[])
 {
   char vendor[12];
@@ -346,4 +353,5 @@ int main (int argc, char* argv[])
        intel-64-architecture-processor-topology-enumeration */
 
 }  /* main() */
+
 #endif

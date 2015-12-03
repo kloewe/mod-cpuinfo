@@ -166,7 +166,8 @@ int corecnt (void)
 {                                   /* --- number of processor cores */
   int ncores;
   size_t len = sizeof(ncores);
-  sysctlbyname("hw.physicalcpu", &ncores, &len, NULL, (size_t)0);
+  if (sysctlbyname("hw.physicalcpu", &ncores, &len, NULL, (size_t)0))
+    return -1;
   return ncores;
 }  /* corecnt() */
 
@@ -196,7 +197,8 @@ int proccnt (void)
 {                                   /* --- number of logical processors */
   int nproc;
   size_t len = sizeof(nproc);
-  sysctlbyname("hw.logicalcpu", &nproc, &len, NULL, (size_t)0);
+  if (sysctlbyname("hw.logicalcpu", &nproc, &len, NULL, (size_t)0))
+    return -1;
   return nproc;
 }  /* proccnt() */
 

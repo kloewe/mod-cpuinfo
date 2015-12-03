@@ -3,8 +3,8 @@
   Contents: processor information queries
   Author  : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------------*/
-#ifndef __CPUINFO__
-#define __CPUINFO__
+#ifndef CPUINFO_H
+#define CPUINFO_H
 
 /*----------------------------------------------------------------------------
   Functions
@@ -31,4 +31,4 @@ extern int hasSSE42      (void);
 extern int hasPOPCNT     (void);
 extern int hasAVX        (void);
 
-#endif
+#endif  /* #ifndef CPUINFO_H */

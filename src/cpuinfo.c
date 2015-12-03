@@ -9,16 +9,33 @@
 #  include <unistd.h>
 #  include <stdio.h>
 #  include <stdlib.h>
-#  ifdef __APPLE__                  /* if Mac OS */
+#  ifdef __APPLE__                  /* if Apple Mac OS system */
 #    include <sys/sysctl.h>
 #    include <sys/types.h>
-#  elif defined __linux__           /* if Linux */
+#  elif defined __linux__           /* if Linux system */
 #    ifdef HAVE_HWLOC
 #      include <hwloc.h>            /* needed for corecntHwloc() */
 #    endif
 #  endif  /* #ifdef __APPLE__ .. #elif defined __linux__ */
 #endif  /* #ifdef _WIN32 .. #else .. */
 #include "cpuinfo.h"
+
+/*----------------------------------------------------------------------------
+  Preprocessor Definitions
+----------------------------------------------------------------------------*/
+#ifdef NDEBUG
+#define DBGMSG(...)  ((void)0)
+#else
+#define DBGMSG(...)  fprintf(stderr, __VA_ARGS__)
+#endif
+
+/*----------------------------------------------------------------------------
+  Type Definitions
+----------------------------------------------------------------------------*/
+typedef struct {                    /* --- processor ids --- */
+  int phys;                         /* physical id */
+  int core;                         /* core     id */
+} PROCIDS;                          /* (processor ids) */
 
 /*----------------------------------------------------------------------------
   Global Variables
@@ -53,12 +70,12 @@ References (cpuid):
 
 int corecntHwloc (void)
 {                                   /* --- number of processor cores */
-  int cnt = -1;
+  int depth, cnt = -1;
   hwloc_topology_t topology;        /* init and load topology */
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
-  int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_CORE);
-                                    /* try to get the number of cores */
+  depth = hwloc_get_type_depth(topology, HWLOC_OBJ_CORE);
+                                    /* get the number of cores */
   if (depth != HWLOC_TYPE_DEPTH_UNKNOWN)
     cnt = (int)hwloc_get_nbobjs_by_depth(topology, (unsigned)depth);
   hwloc_topology_destroy(topology); /* destroy topology object */
@@ -73,93 +90,74 @@ Additional info and references (corecntHwloc):
   stackoverflow.com/a/12486105
   open-mpi.org/projects/hwloc
 ----------------------------------------------------------------------------*/
+
+static int cmpids (const void *p, const void *q)
+{                                   /* --- compare processor ids */
+  const PROCIDS *a = (PROCIDS*)p;   /* type the given pointers */
+  const PROCIDS *b = (PROCIDS*)q;   /* (PROCIDS array elements) */
+  if (a->phys < b->phys) return -1;
+  if (a->phys > b->phys) return +1;
+  if (a->core < b->core) return -1;
+  if (a->core > b->core) return +1;
+  return 0;                         /* return sign of difference */
+}  /* cmpids() */
+
+/*--------------------------------------------------------------------------*/
 #ifdef __linux__                    /* if Linux system */
 
 int corecnt (void)
 {                                   /* --- number of processor cores */
-  FILE *fp;                         /* file pointer */
-  int c,i,j,
-          n;                        /* # log. processors found in cpuinfo */
-  int *phys;                        /* physical ids */
-  int *core;                        /* core ids */
-  int max_phys = -1;                /* the highest encountered physical id */
-  int max_core = -1;                /* the highest encountered core id */
-  int nphys = 0;                    /* number of physical processors */
+  FILE    *fp;                      /* file for /proc/cpuinfo */
+  PROCIDS *pids;                    /* processor ids (physical & core) */
+  int n;                            /* # log. processors found in cpuinfo */
+  int i, p, c, np, nc;              /* loop variables */
+  int nphys  = 0;                   /* number of physical processors */
   int ncores = 0;                   /* number of physical cores */
-  int tmp = 0;
   int nprocs = proccnt();           /* # log. processors (reference) */
-  if (nprocs == -1) return -1;      /* abort if nprocs can't be determined */
-  int *phys2;
-  int *core2;
 
-  phys = calloc(2*(size_t)nprocs, sizeof(int));
-  core = phys + nprocs;
-  if (!phys) return -1;
+  if (nprocs < 0) return -1;        /* abort if nprocs can't be determined */
 
   /* collect physical id and core id of each logical processor */
+  pids = calloc((size_t)nprocs, sizeof(PROCIDS));
+  if (!pids) return -1;             /* create array for processor ids */
   fp = fopen("/proc/cpuinfo", "r");
-  if (!fp) { free(phys); return -1; }
-  for (c = n = 0; (c != EOF) && (n < nprocs); ) {
+  if (!fp) { free(pids); return -1; }
+  for (c = p = n = 0; (c != EOF) && (n < nprocs); ) {
     if      (fscanf(fp, "physical id : %d", &i) > 0) {
-      phys[n] = i;
-      if (phys[n] > max_phys) max_phys = phys[n]; }
+      pids[n].phys = i; p |= 1; }
     else if (fscanf(fp, "core id : %d",     &i) > 0) {
-      core[n] = i;
-      if (core[n] > max_core) max_core = core[n];
-      n++; }
+      pids[n].core = i; p |= 2; }
+    if (p >= 3) { p = 0; n += 1; }
     while (((c = fgetc(fp)) != EOF) && (c != '\n'));
   }
   fclose(fp);
-  if (n != nprocs) { free(phys); return -1; }
+  if (n != nprocs) { free(pids); return -1; }
 
-  /* figure out how many unique physical ids exist */
-  phys2 = calloc((size_t)max_phys+1, sizeof(int));
-  if (!phys2) { free(phys); return -1; }
-  for (i = 0; i < nprocs; i++)
-    phys2[phys[i]]++;
-  for (i = 0; i < max_phys+1; i++) {
-    #ifndef NDEBUG
-    printf("physical id: %d -> %d logical processor(s)\n", i, phys2[i]);
-    #endif
-    if (phys2[i] > 0)
-      nphys++;
-  }
-  #ifndef NDEBUG
-  printf("Number of physical processors: %d\n", nphys);
-  #endif
-
-  /* figure out how many unique core ids exist */
-  core2 = calloc((size_t)max_core+1, sizeof(int));
-  if (!core2) { free(phys); free(phys2); return -1; }
-  for (i = 0; i < nphys; i++) {
-    #ifndef NDEBUG
-    printf("physical id: %d\n", i);
-    #endif
-    for (j = 0; j < nprocs; j++)
-      if (phys[j] == i)
-        core2[core[j]]++;
-    for (j = 0; j < max_core+1; j++) {
-      #ifndef NDEBUG
-      printf("  core id: %2d -> %d logical processor(s)\n", j, core2[j]);
-      #endif
-      if (core2[j] > 0)
-        tmp++;
+  /* sort the array of processor ids and determine the number of cores */
+  qsort(pids, (size_t)nprocs, sizeof(PROCIDS), cmpids);
+  p = pids[0].phys; c = pids[0].core;
+  nphys = ncores = 1;
+  for (i = np = nc = 0; i < n; i++) {
+    if (pids[i].phys == p) {   np += 1;
+      if (pids[i].core == c) { nc += 1; continue; }
+      DBGMSG("phys %d, core %d: %d logical processor(s)\n", p, c, nc);
+      c = pids[i].core; nc = 1;
+      ncores += 1; continue;
     }
-    #ifndef NDEBUG
-    printf("  -> %d cores\n", tmp);
-    #endif
-    for (j = 0; j < max_core+1; j++)
-      core2[j] = 0;
-    ncores += tmp;
-    tmp = 0;
+    DBGMSG("phys %d, core %d: %d logical processor(s)\n", p, c, nc);
+    DBGMSG("physical id %d: %d logical processor(s)\n", p, np);
+    p = pids[i].phys; np = 1;       /* count number of core ids */
+    c = pids[i].core; nc = 1;       /* per physical id and number */
+    ncores += 1; nphys += 1;        /* of different physical ids */
   }
-  if ((ncores != nprocs) && (ncores != nprocs/2)) {
-    free(phys); free(phys2); free(core2); return -1; }
-
-  free(phys);
-  free(phys2);
-  free(core2);
-  return ncores;
+  DBGMSG("phys %d, core %d: %d logical processor(s)\n", p, c, nc);
+  DBGMSG("physical id %d: %d logical processor(s)\n", p, np);
+  DBGMSG("number of physical processors: %d\n", nphys);
+  DBGMSG("number of cores: %d\n", ncores);
+  free(pids);
+  if ((ncores != nprocs) && (ncores != nprocs/2))
+    return -1;                      /* check result for consistency */
+  return ncores;                    /* return the number of cores */
 }  /* corecnt() */
 
 #elif defined __APPLE__             /* if Apple Mac OS system */
@@ -318,7 +316,7 @@ void getVendorID (char *buf)
   ((unsigned *)buf)[0] = (unsigned)regs[1]; // EBX
   ((unsigned *)buf)[1] = (unsigned)regs[3]; // EDX
   ((unsigned *)buf)[2] = (unsigned)regs[2]; // ECX
-}
+}  /* getVendorID() */
 
 /*----------------------------------------------------------------------------
 References (getVendorID):

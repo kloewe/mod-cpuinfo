@@ -90,6 +90,7 @@ Additional info and references (corecntHwloc):
   stackoverflow.com/a/12486105
   open-mpi.org/projects/hwloc
 ----------------------------------------------------------------------------*/
+#ifdef __linux__                    /* if Linux system */
 
 static int cmpids (const void *p, const void *q)
 {                                   /* --- compare processor ids */
@@ -103,7 +104,6 @@ static int cmpids (const void *p, const void *q)
 }  /* cmpids() */
 
 /*--------------------------------------------------------------------------*/
-#ifdef __linux__                    /* if Linux system */
 
 int corecnt (void)
 {                                   /* --- number of processor cores */
@@ -160,6 +160,13 @@ int corecnt (void)
   return ncores;                    /* return the number of cores */
 }  /* corecnt() */
 
+#elif defined _WIN32                /* if Microsoft Windows system */
+
+int corecnt (void)
+{                                   /* --- number of processor cores */
+  return -1;                        /* not yet implemented for Windows */
+}  /* corecnt() */
+
 #elif defined __APPLE__             /* if Apple Mac OS system */
 
 int corecnt (void)
@@ -171,7 +178,7 @@ int corecnt (void)
   return ncores;
 }  /* corecnt() */
 
-#endif  /* #ifdef __linux__ .. elif defined __APPLE__ ..*/
+#endif  /* #ifdef __linux__ .. #elif def. _WIN32 .. #elif def. __APPLE__ .. */
 /*--------------------------------------------------------------------------*/
 #ifdef __linux__                    /* if Linux system */
 #ifdef _SC_NPROCESSORS_ONLN         /* if glibc's sysconf is available */
@@ -202,7 +209,7 @@ int proccnt (void)
   return nproc;
 }  /* proccnt() */
 
-#endif  /* #ifdef __linux__ .. #elif def. WIN32 .. #elif def. __APPLE__ .. */
+#endif  /* #ifdef __linux__ .. #elif def. _WIN32 .. #elif def. __APPLE__ .. */
 /*----------------------------------------------------------------------------
 References (proccnt, Windows version):
   Info on SYSTEM_INFO structure:

@@ -316,6 +316,14 @@ int hasAVX (void)
 
 /*--------------------------------------------------------------------------*/
 
+int hasFMA3 (void)
+{                                   /* --- check for FMA3 */
+  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
+  return (cpuinfo[2] & (1 << 12)) != 0;
+}  /* hasFMA3() */
+
+/*--------------------------------------------------------------------------*/
+
 void getVendorID (char *buf)
 {                                   /* --- get vendor id */
   /* the string is going to be exactly 12 characters long, allocate
@@ -351,6 +359,7 @@ int main (int argc, char* argv[])
   printf("SSE42              %d\n", hasSSE42());;
   printf("POPCNT             %d\n", hasPOPCNT());;
   printf("AVX                %d\n", hasAVX());;
+  printf("FMA3               %d\n", hasFMA3());
 
 /* corecnt    -> number of processor cores
    proccnt    -> number of logical processors

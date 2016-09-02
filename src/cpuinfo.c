@@ -9,6 +9,7 @@
 #  include <unistd.h>
 #  include <stdio.h>
 #  include <stdlib.h>
+#  include <stdint.h>
 #  ifdef __APPLE__                  /* if Apple Mac OS system */
 #    include <sys/sysctl.h>
 #    include <sys/types.h>
@@ -18,6 +19,7 @@
 #    endif
 #  endif  /* #ifdef __APPLE__ .. #elif defined __linux__ */
 #endif  /* #ifdef _WIN32 .. #else .. */
+
 #include "cpuinfo.h"
 
 /*----------------------------------------------------------------------------
@@ -49,7 +51,7 @@ static int cpuinfo[5];              /* cpu information */
 #define cpuid   __cpuid             /* map existing function */
 #else                               /* if Linux/Unix system */
 
-static void cpuid (int info[4], int type)
+static void cpuid (int32_t info[4], int32_t type)
 {                                   /* --- get CPU information */
   __asm__ __volatile__ ("cpuid" :
                         "=a" (info[0]),

@@ -353,14 +353,14 @@ int main (int argc, char* argv[])
   #endif
   printf("Logical processors %d\n", proccnt());
   printf("MMX                %d\n", hasMMX());
-  printf("SSE                %d\n", hasSSE());;
-  printf("SSE2               %d\n", hasSSE2());;
-  printf("SSE3               %d\n", hasSSE3());;
-  printf("SSSE3              %d\n", hasSSSE3());;
-  printf("SSE41              %d\n", hasSSE41());;
-  printf("SSE42              %d\n", hasSSE42());;
-  printf("POPCNT             %d\n", hasPOPCNT());;
-  printf("AVX                %d\n", hasAVX());;
+  printf("SSE                %d\n", hasSSE());
+  printf("SSE2               %d\n", hasSSE2());
+  printf("SSE3               %d\n", hasSSE3());
+  printf("SSSE3              %d\n", hasSSSE3());
+  printf("SSE41              %d\n", hasSSE41());
+  printf("SSE42              %d\n", hasSSE42());
+  printf("POPCNT             %d\n", hasPOPCNT());
+  printf("AVX                %d\n", hasAVX());
   printf("FMA3               %d\n", hasFMA3());
 
 /* corecnt    -> number of processor cores

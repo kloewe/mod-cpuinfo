@@ -30,5 +30,6 @@ extern int hasSSE41      (void);
 extern int hasSSE42      (void);
 extern int hasPOPCNT     (void);
 extern int hasAVX        (void);
+extern int hasFMA3       (void);
 
 #endif  /* #ifndef CPUINFO_H */

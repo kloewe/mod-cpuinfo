@@ -4,10 +4,9 @@
 # Author  : Kristian Loewe, Christian Borgelt
 #-----------------------------------------------------------------------------
 
-CC      = gcc -std=c99 -march=native
-CFBASE  = -Wall -Wextra -Wno-unused-parameter -Wconversion \
-          -pedantic
-CFLAGS  = $(CFBASE) -DNDEBUG -O3
+CC      = gcc -std=c99
+CFBASE  = -Wall -Wextra -Wno-unused-parameter -Wconversion -pedantic
+CFLAGS  = $(CFBASE) -DNDEBUG -O2
 DEFS    =
 
 LD      = gcc

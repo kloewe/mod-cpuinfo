@@ -5,7 +5,7 @@
 #-----------------------------------------------------------------------------
 
 CC      = gcc -std=c99
-CFBASE  = -Wall -Wextra -Wno-unused-parameter -Wconversion -pedantic
+CFBASE  = -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow -pedantic
 CFLAGS  = $(CFBASE) -DNDEBUG -O2
 DEFS    =
 

@@ -9,17 +9,9 @@
 /*----------------------------------------------------------------------------
   Functions
 ----------------------------------------------------------------------------*/
-extern int proccnt       (void); /* # logical processors */
-
-#ifndef _WIN32                   /* if Linux or Apple Mac OS system */
+extern int physcnt       (void); /* # physical processors */
 extern int corecnt       (void); /* # processor cores */
-
-#ifdef __linux__
-#ifdef HAVE_HWLOC
-extern int corecntHwloc (void);  /* # processor cores */
-#endif
-#endif
-#endif
+extern int proccnt       (void); /* # logical processors */
 
 extern int hasMMX        (void);
 extern int hasSSE        (void);

@@ -42,7 +42,9 @@ typedef struct {                    /* --- processor ids --- */
 /*----------------------------------------------------------------------------
   Global Variables
 ----------------------------------------------------------------------------*/
-static int cpuinfo[5];              /* cpu information */
+static int cpuinfo[5];              /* cpu information (cpuid) */
+static int nphys = 0;               /* # phys. processors/packages/sockets */
+static int ncores = 0;              /* # phys. cores */
 
 /*----------------------------------------------------------------------------
   Functions
@@ -107,14 +109,14 @@ static int cmpids (const void *p, const void *q)
 
 /*--------------------------------------------------------------------------*/
 
-int corecnt (void)
+static int enumerate (void)
 {                                   /* --- number of processor cores */
   FILE    *fp;                      /* file for /proc/cpuinfo */
   PROCIDS *pids;                    /* processor ids (physical & core) */
   int n;                            /* # log. processors found in cpuinfo */
   int i, p, c, np, nc;              /* loop variables */
-  int nphys  = 0;                   /* number of physical processors */
-  int ncores = 0;                   /* number of physical cores */
+  nphys  = 0;                       /* number of physical processors */
+  ncores = 0;                       /* number of physical cores */
   int nprocs = proccnt();           /* # log. processors (reference) */
 
   if (nprocs < 0) return -1;        /* abort if nprocs can't be determined */
@@ -157,12 +159,35 @@ int corecnt (void)
   DBGMSG("number of physical processors: %d\n", nphys);
   DBGMSG("number of cores: %d\n", ncores);
   free(pids);
-  if ((ncores != nprocs) && (ncores != nprocs/2))
-    return -1;                      /* check result for consistency */
-  return ncores;                    /* return the number of cores */
+  if ((ncores != nprocs) && (ncores != nprocs/2)) {
+    nphys = -1;
+    ncores = -1;
+    return -1; }                    /* check results for consistency */
+  return 0;                         /* return the number of cores */
+}  /* enumerate() */
+
+/*--------------------------------------------------------------------------*/
+
+int physcnt (void)
+{                                   /* --- number of physical processors */
+  if (!nphys)
+    if (enumerate()) { return -1; }
+  return nphys;
+}  /* physcnt() */
+
+int corecnt (void)
+{                                   /* --- number of processor cores */
+  if (!ncores)
+    if (enumerate()) { return -1; }
+  return ncores;
 }  /* corecnt() */
 
 #elif defined _WIN32                /* if Microsoft Windows system */
+
+int physcnt (void)
+{                                   /* --- number of physical processors */
+  return -1;                        /* not yet implemented for Windows */
+}  /* physcnt() */
 
 int corecnt (void)
 {                                   /* --- number of processor cores */
@@ -170,6 +195,15 @@ int corecnt (void)
 }  /* corecnt() */
 
 #elif defined __APPLE__             /* if Apple Mac OS system */
+
+int physcnt (void)
+{                                   /* --- number of physical processors */
+  int nphys;
+  size_t len = sizeof(nphys);
+  if (sysctlbyname("hw.packages", &nphys, &len, NULL, (size_t)0))
+    return -1;
+  return nphys;
+}  /* physcnt() */
 
 int corecnt (void)
 {                                   /* --- number of processor cores */
@@ -347,28 +381,30 @@ int main (int argc, char* argv[])
 {
   char vendor[12];
   getVendorID(vendor);
-  printf("Vendor             %s\n", vendor);
-  #ifndef _WIN32
-  printf("Processor cores    %d\n", corecnt());
-  #endif
-  printf("Logical processors %d\n", proccnt());
-  printf("MMX                %d\n", hasMMX());
-  printf("SSE                %d\n", hasSSE());
-  printf("SSE2               %d\n", hasSSE2());
-  printf("SSE3               %d\n", hasSSE3());
-  printf("SSSE3              %d\n", hasSSSE3());
-  printf("SSE41              %d\n", hasSSE41());
-  printf("SSE42              %d\n", hasSSE42());
-  printf("POPCNT             %d\n", hasPOPCNT());
-  printf("AVX                %d\n", hasAVX());
-  printf("FMA3               %d\n", hasFMA3());
+  printf("Vendor              %s\n", vendor);
+  printf("Physical processors %d\n", physcnt());
+  printf("Processor cores     %d\n", corecnt());
+  printf("Logical processors  %d\n", proccnt());
+  printf("MMX                 %d\n", hasMMX());
+  printf("SSE                 %d\n", hasSSE());
+  printf("SSE2                %d\n", hasSSE2());
+  printf("SSE3                %d\n", hasSSE3());
+  printf("SSSE3               %d\n", hasSSSE3());
+  printf("SSE41               %d\n", hasSSE41());
+  printf("SSE42               %d\n", hasSSE42());
+  printf("POPCNT              %d\n", hasPOPCNT());
+  printf("AVX                 %d\n", hasAVX());
+  printf("FMA3                %d\n", hasFMA3());
 
-/* corecnt    -> number of processor cores
+/*
+   physcnt    -> number of physical processors/packages/sockets
+   corecnt    -> number of processor cores
    proccnt    -> number of logical processors
    proccntmax -> max. number of logical processors per core
    See the glossary at:
      software.intel.com/en-us/articles/
-       intel-64-architecture-processor-topology-enumeration */
+       intel-64-architecture-processor-topology-enumeration
+*/
 
 }  /* main() */
 

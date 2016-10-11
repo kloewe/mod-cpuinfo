@@ -23,31 +23,38 @@ else
   DEFS += -DHAVE_HWLOC
 endif
 
+_DUMMY := $(shell mkdir -p ../obj; mkdir -p ../bin)
 
 #-----------------------------------------------------------------------------
 # Build Program
 #-----------------------------------------------------------------------------
-all:        $(PRGS)
+all: $(PRGS)
 
-cpuinfo: cpuinfo_main.o makefile
-	$(LD) $(LDFLAGS) cpuinfo_main.o $(LIBS) -o $@
+cpuinfo: ../bin/cpuinfo
+	
+
+../bin/cpuinfo: ../obj/cpuinfo_main.o makefile
+	$(LD) $(LDFLAGS) ../obj/cpuinfo_main.o $(LIBS) -o $@
 
 #-----------------------------------------------------------------------------
 # Program
 #-----------------------------------------------------------------------------
-cpuinfo_main.o:  cpuinfo.h
-cpuinfo_main.o:  cpuinfo.c makefile
+../obj/cpuinfo_main.o:  cpuinfo.h
+../obj/cpuinfo_main.o:  cpuinfo.c makefile
 	$(CC) $(CFLAGS) $(DEFS) -DCPUINFO_MAIN -c cpuinfo.c -o $@
 
 #-----------------------------------------------------------------------------
 # Module
 #-----------------------------------------------------------------------------
-cpuinfo.o:  cpuinfo.h
-cpuinfo.o:  cpuinfo.c makefile
+cpuinfo.o: ../obj/cpuinfo.o
+	
+
+../obj/cpuinfo.o:  cpuinfo.h
+../obj/cpuinfo.o:  cpuinfo.c makefile
 	$(CC) $(CFLAGS) -c cpuinfo.c -o $@
 
 #-----------------------------------------------------------------------------
 # Clean up
 #-----------------------------------------------------------------------------
 clean:
-	rm -f *.o *~
+	rm -f ../obj/*.o ../bin/cpuinfo

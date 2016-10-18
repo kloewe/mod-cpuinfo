@@ -46,8 +46,9 @@ typedef struct {                    /* --- processor ids --- */
   Global Variables
 ----------------------------------------------------------------------------*/
 static int cpuinfo[5];              /* cpu information (cpuid) */
-static int nphys = 0;               /* # phys. processors/packages/sockets */
-static int ncores = 0;              /* # phys. cores */
+static int nphys  = 0;              /* # processors/packages/sockets */
+static int ncores = 0;              /* # processor cores */
+static int nprocs = 0;              /* # logical processors */
 
 /*----------------------------------------------------------------------------
   Functions
@@ -113,16 +114,24 @@ static int cmpids (const void *p, const void *q)
 /*--------------------------------------------------------------------------*/
 
 static int enumerate (void)
-{                                   /* --- number of processor cores */
+{                                   /* --- enumerate topology */
   FILE    *fp;                      /* file for /proc/cpuinfo */
   PROCIDS *pids;                    /* processor ids (physical & core) */
   int n;                            /* # log. processors found in cpuinfo */
   int i, p, c, np, nc;              /* loop variables */
-  nphys  = 0;                       /* number of physical processors */
-  ncores = 0;                       /* number of physical cores */
-  int nprocs = proccnt();           /* # log. processors (reference) */
 
-  if (nprocs < 0) return -1;        /* abort if nprocs can't be determined */
+  /* determine number of logical processors (reference) */
+  #ifdef _SC_NPROCESSORS_ONLN       /* if glibc's sysconf is available */
+  nprocs = (int)sysconf(_SC_NPROCESSORS_ONLN);
+  #else
+  nprocs = -1;
+  #endif
+  if (nprocs < 0) {                 /* abort if nprocs can't be determined */
+    nphys  = -1;
+    ncores = -1;
+    nprocs = -1;
+    return -1;
+  }
 
   /* collect physical id and core id of each logical processor */
   pids = calloc((size_t)nprocs, sizeof(PROCIDS));
@@ -138,7 +147,13 @@ static int enumerate (void)
     while (((c = fgetc(fp)) != EOF) && (c != '\n'));
   }
   fclose(fp);
-  if (n != nprocs) { free(pids); return -1; }
+  if (n != nprocs) {                /* abort if the number of log. procs */
+    nphys  = -1;                    /* found differs from the reference */
+    ncores = -1;
+    nprocs = -1;
+    free(pids);
+    return -1;
+  }
 
   /* sort the array of processor ids and determine the number of cores */
   qsort(pids, (size_t)nprocs, sizeof(PROCIDS), cmpids);
@@ -162,11 +177,13 @@ static int enumerate (void)
   DBGMSG("number of physical processors: %d\n", nphys);
   DBGMSG("number of cores: %d\n", ncores);
   free(pids);
-  if ((ncores != nprocs) && (ncores != nprocs/2)) {
-    nphys = -1;
+  if (nprocs % ncores) {            /* check results for consistency */
+    nphys  = -1;
     ncores = -1;
-    return -1; }                    /* check results for consistency */
-  return 0;                         /* return the number of cores */
+    nprocs = -1;
+    return -1; }
+  else
+    return 0;
 }  /* enumerate() */
 
 /*--------------------------------------------------------------------------*/
@@ -178,6 +195,8 @@ int physcnt (void)
   return nphys;
 }  /* physcnt() */
 
+/*--------------------------------------------------------------------------*/
+
 int corecnt (void)
 {                                   /* --- number of processor cores */
   if (!ncores)
@@ -185,6 +204,16 @@ int corecnt (void)
   return ncores;
 }  /* corecnt() */
 
+/*--------------------------------------------------------------------------*/
+
+int proccnt (void)
+{                                   /* --- number of logical processors */
+  if (!nprocs)
+    if (enumerate()) { return -1; }
+  return nprocs;
+}  /* proccnt() */
+
+/*--------------------------------------------------------------------------*/
 #elif defined _WIN32                /* if Microsoft Windows system */
 
 int physcnt (void)
@@ -192,11 +221,23 @@ int physcnt (void)
   return -1;                        /* not yet implemented for Windows */
 }  /* physcnt() */
 
+/*--------------------------------------------------------------------------*/
+
 int corecnt (void)
 {                                   /* --- number of processor cores */
   return -1;                        /* not yet implemented for Windows */
 }  /* corecnt() */
 
+/*--------------------------------------------------------------------------*/
+
+int proccnt (void)
+{                                   /* --- number of logical processors */
+  SYSTEM_INFO sysinfo;              /* system information structure */
+  GetSystemInfo(&sysinfo);          /* get system information */
+  return sysinfo.dwNumberOfProcessors;
+}  /* proccnt() */
+
+/*--------------------------------------------------------------------------*/
 #elif defined __APPLE__             /* if Apple Mac OS system */
 
 int physcnt (void)
@@ -208,6 +249,8 @@ int physcnt (void)
   return nphys;
 }  /* physcnt() */
 
+/*--------------------------------------------------------------------------*/
+
 int corecnt (void)
 {                                   /* --- number of processor cores */
   int ncores;
@@ -217,27 +260,7 @@ int corecnt (void)
   return ncores;
 }  /* corecnt() */
 
-#endif  /* #ifdef __linux__ .. #elif def. _WIN32 .. #elif def. __APPLE__ .. */
 /*--------------------------------------------------------------------------*/
-#ifdef __linux__                    /* if Linux system */
-#ifdef _SC_NPROCESSORS_ONLN         /* if glibc's sysconf is available */
-
-int proccnt (void)
-{                                   /* --- number of logical processors */
-  return (int)sysconf(_SC_NPROCESSORS_ONLN);
-}  /* proccnt() */
-
-#endif  /* #ifdef _SC_NPROCESSORS_ONLN */
-#elif defined _WIN32                /* if Microsoft Windows system */
-
-int proccnt (void)
-{                                   /* --- number of logical processors */
-  SYSTEM_INFO sysinfo;              /* system information structure */
-  GetSystemInfo(&sysinfo);          /* get system information */
-  return sysinfo.dwNumberOfProcessors;
-}  /* proccnt() */
-
-#elif defined __APPLE__             /* if Apple Mac OS system */
 
 int proccnt (void)
 {                                   /* --- number of logical processors */

@@ -28,7 +28,10 @@
 #ifdef NDEBUG
 #define DBGMSG(...)  ((void)0)
 #else
-#define DBGMSG(...)  fprintf(stderr, __VA_ARGS__)
+#line __LINE__ "cpuinfo.c"
+#define DBGMSG(...)  do { fprintf(stderr, "%s:%d:%s()\n", \
+                          __FILE__, __LINE__, __func__); \
+                          fprintf(stderr, __VA_ARGS__); } while(0)
 #endif
 
 /*----------------------------------------------------------------------------
@@ -144,7 +147,7 @@ static int enumerate (void)
   for (i = np = nc = 0; i < n; i++) {
     if (pids[i].phys == p) {   np += 1;
       if (pids[i].core == c) { nc += 1; continue; }
-      DBGMSG("phys %d, core %d: %d logical processor(s)\n", p, c, nc);
+      DBGMSG("phys %d, core %2d: %d logical processor(s)\n", p, c, nc);
       c = pids[i].core; nc = 1;
       ncores += 1; continue;
     }

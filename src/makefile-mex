@@ -1,0 +1,29 @@
+#-----------------------------------------------------------------------------
+# File    : makefile-mex
+# Contents: build objects for use with matlab/mex
+# Author  : Kristian Loewe
+#-----------------------------------------------------------------------------
+.SUFFIXES:                                   # remove built-in rules
+MAKEFLAGS   += -r
+
+CFLAGS      = -std=c99 \
+              -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
+              -pedantic -fPIC
+COPTIMFLAGS = -O2
+
+MATLABROOT  = $(dir $(realpath $(shell which matlab)))
+MEXCC       = $(realpath $(MATLABROOT))/mex -largeArrayDims
+
+OBJDIR      = ../obj/$(shell uname -m)/matlab
+_DUMMY      := $(shell mkdir -p $(OBJDIR); mkdir -p $(OBJDIR))
+
+#-----------------------------------------------------------------------------
+# Build Objects
+#-----------------------------------------------------------------------------
+all: cpuinfo.o
+
+cpuinfo.o:             $(OBJDIR)/cpuinfo.o
+$(OBJDIR)/cpuinfo.o:   cpuinfo.h
+$(OBJDIR)/cpuinfo.o:   cpuinfo.c makefile-mex
+	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
+    -DNDEBUG -c cpuinfo.c -outdir $(OBJDIR)

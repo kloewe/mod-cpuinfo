@@ -24,5 +24,10 @@ extern int hasPOPCNT     (void);
 extern int hasAVX        (void);
 extern int hasAVX2       (void);
 extern int hasFMA3       (void);
+extern int hasAVX512f    (void);
+extern int hasAVX512cd   (void);
+extern int hasAVX512bw   (void);
+extern int hasAVX512dq   (void);
+extern int hasAVX512vl   (void);
 
 #endif  /* #ifndef CPUINFO_H */

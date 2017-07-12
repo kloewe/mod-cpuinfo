@@ -434,6 +434,61 @@ int hasFMA3 (void)
 
 /*--------------------------------------------------------------------------*/
 
+int hasAVX512f (void)
+{                                   /* --- check for AVX512f instructions */
+  int eax = 7;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[1] & (1 << 16)) != 0; /* EBX 16 */
+}  /* hasAVX512f() */
+
+/*--------------------------------------------------------------------------*/
+
+int hasAVX512cd (void)
+{                                   /* --- check for AVX512cd instructions */
+  int eax = 7;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[1] & (1 << 28)) != 0; /* EBX 28 */
+}  /* hasAVX512cd() */
+
+/*--------------------------------------------------------------------------*/
+
+int hasAVX512bw (void)
+{                                   /* --- check for AVX512bw instructions */
+  int eax = 7;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[1] & (1 << 30)) != 0; /* EBX 30 */
+}  /* hasAVX512bw() */
+
+/*--------------------------------------------------------------------------*/
+
+int hasAVX512dq (void)
+{                                   /* --- check for AVX512dq instructions */
+  int eax = 7;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[1] & (1 << 17)) != 0; /* EBX 17 */
+}  /* hasAVX512dq() */
+
+/*--------------------------------------------------------------------------*/
+
+int hasAVX512vl (void)
+{                                   /* --- check for AVX512vl instructions */
+  int eax = 7;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[1] & (1 << 31)) != 0; /* EBX 31 */
+}  /* hasAVX512vl() */
+
+/*--------------------------------------------------------------------------*/
+
 void getVendorID (char *buf)
 {                                   /* --- get vendor id */
   /* the string is going to be exactly 12 characters long, allocate
@@ -472,6 +527,11 @@ int main (int argc, char* argv[])
   printf("AVX                 %d\n", hasAVX());
   printf("AVX2                %d\n", hasAVX2());
   printf("FMA3                %d\n", hasFMA3());
+  printf("AVX512f             %d\n", hasAVX512f());
+  printf("AVX512cd            %d\n", hasAVX512cd());
+  printf("AVX512bw            %d\n", hasAVX512bw());
+  printf("AVX512dq            %d\n", hasAVX512dq());
+  printf("AVX512vl            %d\n", hasAVX512vl());
 
 /*
    physcnt    -> number of physical processors/packages/sockets

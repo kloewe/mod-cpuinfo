@@ -45,7 +45,9 @@ typedef struct {                    /* --- processor ids --- */
 /*----------------------------------------------------------------------------
   Global Variables
 ----------------------------------------------------------------------------*/
-static int cpuinfo[5];              /* cpu information (cpuid) */
+static int cpuinfo[4];              /* cpu information (cpuid) */
+static int peax = -1;               /* previous eax */
+static int pecx = -1;               /* previous ecx */
 static int nphys  = 0;              /* # processors/packages/sockets */
 static int ncores = 0;              /* # processor cores */
 static int nprocs = 0;              /* # logical processors */
@@ -57,14 +59,16 @@ static int nprocs = 0;              /* # logical processors */
 #define cpuid   __cpuid             /* map existing function */
 #else                               /* if Linux/Unix system */
 
-static void cpuid (int32_t info[4], int32_t type)
+static void cpuid (int32_t info[4], int32_t eax, int32_t ecx)
 {                                   /* --- get CPU information */
   __asm__ __volatile__ ("cpuid" :
                         "=a" (info[0]),
                         "=b" (info[1]),
                         "=c" (info[2]),
                         "=d" (info[3])
-                        : "a" (type), "c" (0)); // : "a" (type));
+                        : "a" (eax), "c" (ecx));
+  peax = eax;
+  pecx = ecx;
 }  /* cpuid() */
 
 #endif  /* #ifdef _WIN32 .. #else .. */
@@ -290,7 +294,10 @@ Additional info and references (proccnt, Linux version):
 int proccntmax (void)
 {                                   /* --- max. number of logical processors
                                      *     per physical processor */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
   return (cpuinfo[1] >> 16) & 0xff; /* EBX[23:16] */
 }  /* proccntmax() */
 
@@ -308,7 +315,10 @@ References (proccntmax):
 
 int hasMMX (void)
 {                                   /* --- check for MMX instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
   return (cpuinfo[3] & (1 << 23)) != 0;
 }  /* hasMMX() */
 
@@ -316,72 +326,110 @@ int hasMMX (void)
 
 int hasSSE (void)
 {                                   /* --- check for SSE instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[3] & (1 << 25)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[3] & (1 << 25)) != 0; /* EDX 25 */
 }  /* hasSSE() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasSSE2 (void)
 {                                   /* --- check for SSE2 instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[3] & (1 << 26)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[3] & (1 << 26)) != 0; /* EDX 26 */
 }  /* hasSSE2() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasSSE3 (void)
 {                                   /* --- check for SSE3 instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 <<  0)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 <<  0)) != 0; /* ECX 0 */
 }  /* hasSSE3() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasSSSE3 (void)
 {                                   /* --- check for SSSE3 instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 <<  9)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 <<  9)) != 0; /* ECX 9 */
 }  /* hasSSSE3() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasSSE41 (void)
 {                                   /* --- check for SSE4.1 instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 << 19)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 << 19)) != 0; /* ECX 19 */
 }  /* hasSSE41() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasSSE42 (void)
 {                                   /* --- check for SSE4.2 instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 << 20)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 << 20)) != 0; /* ECX 20 */
 }  /* hasSSE42() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasPOPCNT (void)
 {                                   /* --- check for popcnt instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 << 23)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 << 23)) != 0; /* ECX 23 */
 }  /* hasPOPCNT() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasAVX (void)
 {                                   /* --- check for AVX instructions */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 << 28)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 << 28)) != 0; /* ECX 28 */
 }  /* hasAVX() */
+
+/*--------------------------------------------------------------------------*/
+
+int hasAVX2 (void)
+{                                   /* --- check for AVX2 instructions */
+  int eax = 7;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[1] & (1 <<  5)) != 0; /* EBX 5 */
+}  /* hasAVX2() */
 
 /*--------------------------------------------------------------------------*/
 
 int hasFMA3 (void)
 {                                   /* --- check for FMA3 */
-  if (!cpuinfo[4]) { cpuid(cpuinfo, 1); cpuinfo[4] = -1; }
-  return (cpuinfo[2] & (1 << 12)) != 0;
+  int eax = 1;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  return (cpuinfo[2] & (1 << 12)) != 0; /* ECX 12 */
 }  /* hasFMA3() */
 
 /*--------------------------------------------------------------------------*/
@@ -390,11 +438,13 @@ void getVendorID (char *buf)
 {                                   /* --- get vendor id */
   /* the string is going to be exactly 12 characters long, allocate
      the buffer outside this function accordingly */
-  int regs[4];
-  cpuid(regs, 0);
-  ((unsigned *)buf)[0] = (unsigned)regs[1]; // EBX
-  ((unsigned *)buf)[1] = (unsigned)regs[3]; // EDX
-  ((unsigned *)buf)[2] = (unsigned)regs[2]; // ECX
+  int eax = 0;
+  int ecx = 0;
+  if ((eax != peax) || (ecx != pecx))
+    cpuid(cpuinfo, eax, ecx);
+  ((unsigned *)buf)[0] = (unsigned)cpuinfo[1]; /* EBX */
+  ((unsigned *)buf)[1] = (unsigned)cpuinfo[3]; /* EDX */
+  ((unsigned *)buf)[2] = (unsigned)cpuinfo[2]; /* ECX */
 }  /* getVendorID() */
 
 /*----------------------------------------------------------------------------
@@ -420,6 +470,7 @@ int main (int argc, char* argv[])
   printf("SSE42               %d\n", hasSSE42());
   printf("POPCNT              %d\n", hasPOPCNT());
   printf("AVX                 %d\n", hasAVX());
+  printf("AVX2                %d\n", hasAVX2());
   printf("FMA3                %d\n", hasFMA3());
 
 /*

@@ -56,7 +56,7 @@ static int nprocs = 0;              /* # logical processors */
   Functions
 ----------------------------------------------------------------------------*/
 #ifdef _WIN32                       /* if Microsoft Windows system */
-#define cpuid   __cpuid             /* map existing function */
+#define cpuid   __cpuidex           /* map existing function */
 #else                               /* if Linux/Unix system */
 
 static void cpuid (int32_t info[4], int32_t eax, int32_t ecx)

@@ -2,20 +2,38 @@
 # File    : makefile-mex
 # Contents: build objects for use with matlab/mex
 # Author  : Kristian Loewe
+#
+# Usage   : make -f makefile-mex
+#           MEX_FLAGS='-v' make -f makefile-mex
+#           make -f makefile-mex | grep -v 'Warning.*gcc version'
+#           make -B -f makefile-mex | grep -v 'Warning.*gcc version'
+#           DEBUG=1 make -B -f makefile-mex | grep -v 'Warning.*gcc version'
 #-----------------------------------------------------------------------------
-.SUFFIXES:                                   # remove built-in rules
+.SUFFIXES:
 MAKEFLAGS   += -r
 
-CFLAGS      = -std=c99 \
-              -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
-              -pedantic -fPIC
-COPTIMFLAGS = -O2
+CC          ?= gcc
+CFBASE       = -std=c99 -Wall -Wextra -Wno-unused-parameter -Wconversion \
+               -Wshadow -pedantic
+DEFS        ?=
+MEX_FLAGS   ?=
 
-MATLABROOT  = $(dir $(realpath $(shell which matlab)))
-MEXCC       = $(realpath $(MATLABROOT))/mex -largeArrayDims
+DEBUG       ?= 0
+ifeq ($(DEBUG), 1)
+  CFBASE    += -g
+  CFOPT     ?= -O0
+else
+  CFOPT     ?= -O2
+  DEFS      += -DNDEBUG
+endif
+CFLAGS       = $(CFBASE) -fPIC $(DEFS)
 
-OBJDIR      = ../obj/$(shell uname -m)/matlab
-_DUMMY      := $(shell mkdir -p $(OBJDIR); mkdir -p $(OBJDIR))
+MATLABROOT   = $(dir $(realpath $(shell which matlab)))
+MEXCC        = $(realpath $(MATLABROOT))/mex -largeArrayDims $(MEX_FLAGS) \
+               CFLAGS='$(CFLAGS)'
+
+OBJDIR       = ../obj/$(shell uname -m)/matlab
+_DUMMY      := $(shell mkdir -p $(OBJDIR))
 
 #-----------------------------------------------------------------------------
 # Build Objects
@@ -25,5 +43,4 @@ all: cpuinfo.o
 cpuinfo.o:             $(OBJDIR)/cpuinfo.o
 $(OBJDIR)/cpuinfo.o:   cpuinfo.h
 $(OBJDIR)/cpuinfo.o:   cpuinfo.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -c cpuinfo.c -outdir $(OBJDIR)
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' -c cpuinfo.c -outdir $(OBJDIR)

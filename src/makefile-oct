@@ -1,21 +1,39 @@
 #-----------------------------------------------------------------------------
 # File    : makefile-oct
 # Contents: build objects for use with octave/mex
-# Author  : Kristian Loewe 
+# Author  : Kristian Loewe
 #           (with modifications for octave by Christina Rossmanith)
+#
+# Usage   : make -f makefile-oct
+#           MEX_FLAGS='-v' make -f makefile-oct
+#           make -B -f makefile-oct
+#           DEBUG=1 make -B -f makefile-oct
 #-----------------------------------------------------------------------------
-.SUFFIXES:                                   # remove built-in rules
+.SUFFIXES:
 MAKEFLAGS   += -r
 
-CFLAGS      = -std=c99 \
-              -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
-              -pedantic -fPIC
-COPTIMFLAGS = -O2
+CC          ?= gcc
+CFBASE       = -std=c99 -Wall -Wextra -Wno-unused-parameter -Wconversion \
+               -Wshadow -pedantic
+DEFS        ?=
+MEX_FLAGS   ?=
 
-MEXCC       = mkoctfile --mex
+DEBUG       ?= 0
+ifeq ($(DEBUG), 1)
+  CFBASE    += -g
+  CFOPT     ?= -O0
+else
+  CFOPT     ?= -O2
+  DEFS      += -DNDEBUG
+endif
+CFLAGS       = $(CFBASE) -fPIC $(DEFS)
 
-OBJDIR      = ../obj/$(shell uname -m)/octave
-_DUMMY      := $(shell mkdir -p $(OBJDIR); mkdir -p $(OBJDIR))
+
+MEXCC        = mkoctfile --mex $(MEX_FLAGS)
+
+
+OBJDIR       = ../obj/$(shell uname -m)/octave
+_DUMMY      := $(shell mkdir -p $(OBJDIR))
 
 #-----------------------------------------------------------------------------
 # Build Objects
@@ -25,4 +43,4 @@ all: cpuinfo.o
 cpuinfo.o:             $(OBJDIR)/cpuinfo.o
 $(OBJDIR)/cpuinfo.o:   cpuinfo.h
 $(OBJDIR)/cpuinfo.o:   cpuinfo.c makefile-oct
-	CFLAGS='$(CFLAGS) $(COPTIMFLAGS)' $(MEXCC) -DNDEBUG -c $< -o $@
+	CFLAGS='$(CFLAGS) $(CFOPT)' $(MEXCC) -c $< -o $@
